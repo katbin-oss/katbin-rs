@@ -1,16 +1,14 @@
-workspace = { members = ["api"] }
 [package]
-name = "katbin"
+name = "api"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-api = { path = "api" }
+anyhow = "1.0.80"
 axum = "0.7.4"
-config = "0.13.4"
-sea-orm = { version = "0.12", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros" ] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.68"
 tokio = { version = "1.35.1", features = ["full"] }
