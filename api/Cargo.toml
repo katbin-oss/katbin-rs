@@ -7,8 +7,11 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+service = { path = "../service" }
+
 anyhow = "1.0.80"
 axum = "0.7.4"
+dotenvy = "0.15.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.68"
 tokio = { version = "1.35.1", features = ["full"] }
