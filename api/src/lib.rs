@@ -49,7 +49,7 @@ async fn start() -> anyhow::Result<()> {
         .await
         .unwrap();
 
-    tracing::debug!("listening on http://{}", listener.local_addr().unwrap());
+    tracing::info!("listening on http://{}", listener.local_addr().unwrap());
     axum::serve(listener, app).await?;
 
     Ok(())
@@ -68,7 +68,10 @@ async fn root(
     let mut ctx = tera::Context::new();
 
     let body = state.templates.render("index.html.tera", &ctx)
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "error rendering template"))?;
+        .map_err(|e| {
+            tracing::error!("Error rendering template {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "error rendering template")
+        })?;
 
     Ok(Html(body))
 }
