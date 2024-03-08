@@ -1,0 +1,4 @@
+{% extends "base.html.tera" %}
+{% block innerContent %}
+    <div>Hello, world!</div>
+{% endblock %}

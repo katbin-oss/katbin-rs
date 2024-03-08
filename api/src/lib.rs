@@ -1,8 +1,13 @@
 use std::env;
 
-use anyhow::Ok;
 use axum::{routing::get, Router};
-use service::sea_orm::Database;
+use axum::extract::State;
+use axum::http::StatusCode;
+use axum::response::Html;
+use axum::routing::get_service;
+use tera::Tera;
+use tower_http::services::ServeDir;
+use service::sea_orm::{Database, DatabaseConnection};
 
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
@@ -10,7 +15,8 @@ async fn start() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     // load env variables
-    dotenvy::dotenv()?;
+
+    dotenvy::dotenv().ok();
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL not found in environment");
     let port = env::var("PORT").expect("PORT not found in environment");
 
@@ -19,10 +25,27 @@ async fn start() -> anyhow::Result<()> {
         .await
         .expect("database connection failed");
 
+    let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).expect("tera initialization failed");
 
-    let app = Router::new().route("/", get(root));
+    let state: AppState = AppState { templates, conn };
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+    let app = Router::new()
+        .route("/", get(root))
+        .nest_service(
+            "/static",
+            get_service(ServeDir::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/static"
+        )))
+        .handle_error(|error| async move {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Unhandled internal error: {error}"),
+            )
+        }))
+        .with_state(state);
+
+    let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", port))
         .await
         .unwrap();
 
@@ -32,9 +55,22 @@ async fn start() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[derive(Clone)]
+struct AppState {
+    templates: Tera,
+    conn: DatabaseConnection,
+}
+
 // basic handler that responds with a static string
-async fn root() -> &'static str {
-    "Hello, World!"
+async fn root(
+    state: State<AppState>
+) -> Result<Html<String>, (StatusCode, &'static str)> {
+    let mut ctx = tera::Context::new();
+
+    let body = state.templates.render("index.html.tera", &ctx)
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "error rendering template"))?;
+
+    Ok(Html(body))
 }
 
 pub fn main() {
