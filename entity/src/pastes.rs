@@ -15,7 +15,7 @@ pub struct Model {
     pub content: String,
     pub belongs_to: Option<i64>,
     #[sea_orm(ignore)]
-    pub custom_url: Option<String>
+    pub custom_url: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

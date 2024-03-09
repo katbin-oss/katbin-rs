@@ -1,4 +1,4 @@
-use sea_orm_migration::{prelude::*};
+use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -65,18 +65,22 @@ impl MigrationTrait for Migration {
 
             create index users_tokens_user_id_index
                 on public.users_tokens (user_id);
-        "
-        ).await?;
-
+        ",
+        )
+        .await?;
 
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager.get_connection()
-            .execute_unprepared("DROP table public.users_tokens;
+        manager
+            .get_connection()
+            .execute_unprepared(
+                "DROP table public.users_tokens;
             DROP table public.pastes;
-            DROP table public.users;").await?;
+            DROP table public.users;",
+            )
+            .await?;
         Ok(())
     }
 }

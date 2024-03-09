@@ -18,7 +18,7 @@
     </div>
     {% endif %}
 
-    {% if alreadTaken %}
+    {% if already_taken %}
     <div class="w-full text-center bg-amber">
         <p>This custom URL has already been taken.</p>
     </div>
@@ -31,7 +31,7 @@
             placeholder="> Paste, save, share! (Pasting just a URL will shorten it!)"
         ></textarea>
         <div class="flex absolute top-0 right-0 p-4">
-            {% if currentUser and isEdit %}
+            {% if current_user and is_edit %}
             <div>
                 <input type="text" name="customUrl" class="mr-2 outline-none text-black px-2 py-1" placeholder="Custom URL">
             </div>

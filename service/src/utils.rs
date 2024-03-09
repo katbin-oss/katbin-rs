@@ -9,14 +9,16 @@ fn rand_vowel() -> char {
 
 fn rand_consonant() -> char {
     let consonants = [
-        'b', 'c', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n',
-        'p', 'q', 'r', 's', 't', 'v', 'w', 'x', 'y', 'z',
+        'b', 'c', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 'q', 'r', 's', 't', 'v', 'w',
+        'x', 'y', 'z',
     ];
     let mut rng = rand::thread_rng();
-    *consonants.choose(&mut rng).expect("failed to get a consonant") // this should never panic unless the slice is empty
+    *consonants
+        .choose(&mut rng)
+        .expect("failed to get a consonant") // this should never panic unless the slice is empty
 }
 
-pub (crate) fn generate_key(length: usize) -> String {
+pub(crate) fn generate_key(length: usize) -> String {
     let mut key = String::with_capacity(length);
     let random: bool = rand::thread_rng().gen();
 
@@ -31,13 +33,15 @@ pub (crate) fn generate_key(length: usize) -> String {
     key
 }
 
-pub (crate) fn is_url(url: &str) -> bool {
+pub(crate) fn is_url(url: &str) -> bool {
     match Url::parse(url) {
         Ok(parsed_url) => {
             // Check if the scheme is "http", "https", or "mailto" and if the host contains "."
             let scheme = parsed_url.scheme();
             let host = parsed_url.host_str().unwrap_or("");
-            ["http", "https", "mailto"].contains(&scheme) && host.contains('.') && !host.contains("katb.in")
+            ["http", "https", "mailto"].contains(&scheme)
+                && host.contains('.')
+                && !host.contains("katb.in")
         }
         Err(_) => false,
     }
