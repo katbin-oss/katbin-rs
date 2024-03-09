@@ -65,7 +65,7 @@ struct AppState {
 async fn root(
     state: State<AppState>
 ) -> Result<Html<String>, (StatusCode, &'static str)> {
-    let mut ctx = tera::Context::new();
+    let ctx = tera::Context::new();
 
     let body = state.templates.render("index.html.tera", &ctx)
         .map_err(|e| {

@@ -1,7 +1,7 @@
 {% extends "base.html.tera" %}
 {% block innerContent %}
 
-<form class="flex flex-col w-full h-full relative" id="page_form">
+<form class="flex flex-col w-full h-full relative" id="page_form" method="post">
     <!-- listen for Ctrl + S events -->
     <script>
         document.addEventListener("keydown", function(e) {
@@ -33,7 +33,7 @@
         <div class="flex absolute top-0 right-0 p-4">
             {% if currentUser and isEdit %}
             <div>
-                <input type="text" name="customUrl" class="px-2 mr-2 outline-none text-black px-2 py-1" placeholder="Custom URL">
+                <input type="text" name="customUrl" class="mr-2 outline-none text-black px-2 py-1" placeholder="Custom URL">
             </div>
             {% endif %}
 
