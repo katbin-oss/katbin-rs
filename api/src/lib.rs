@@ -4,14 +4,16 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get_service, post};
-use axum::Form;
+use axum::{body, Form};
 use axum::{routing::get, Router};
-use entity::pastes;
+use entity::{pastes, users};
 use serde::{Deserialize, Serialize};
 use service::sea_orm::{Database, DatabaseConnection, DbErr, SqlErr};
 use service::{Mutation, Query};
 use tera::Tera;
 use tower_http::services::ServeDir;
+
+mod schema;
 
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
@@ -38,6 +40,7 @@ async fn start() -> anyhow::Result<()> {
         .route("/", get(root))
         .route("/", post(create_paste))
         .route("/:paste_id", get(show_paste))
+        .route("/users/log_in", get(login))
         .nest_service(
             "/static",
             get_service(ServeDir::new(concat!(
@@ -177,6 +180,22 @@ async fn show_paste(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "error rendering template",
             );
+        })?;
+
+    Ok(Html(body))
+}
+
+async fn login(state: State<AppState>) -> Result<Html<String>, (StatusCode, &'static str)> {
+    let ctx = tera::Context::new();
+    let body = state
+        .templates
+        .render("login.html.tera", &ctx)
+        .map_err(|err| {
+            tracing::error!("error rendering template {}", err);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "error rendering template",
+            )
         })?;
 
     Ok(Html(body))

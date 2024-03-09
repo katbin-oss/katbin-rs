@@ -13,6 +13,8 @@
     {% endif %}
 
     <title itemprop="name">Katbin</title>
+    <link rel="icon" href="/static/favicon.ico" type="image/vnd.microsoft.icon">
+    <link rel="shortcut icon" href="/static/favicon.ico" type="image/vnd.microsoft.icon">
 
     <meta property="og:type" content="object">
     <meta property="og:title" content="Katbin">

@@ -1,0 +1,37 @@
+{% extends "base.html.tera" %}
+{% block innerContent %}
+<div class="flex flex-col w-full h-full justify-center items-center">
+	<h1 class="font-bold text-4xl text-amber pt-4">Log in</h1>
+
+	<form class="flex flex-col h-full justify-center items-start m-auto">
+		{% if error_message %}
+			<div class="alert alert-danger">
+				<p>{{ error_message }}</p>
+			</div>
+		{% endif %}
+
+		<div class="flex flex-col w-full">
+            <label for="email">Email</label>
+            <input type="email" name="email" id="email" class="text-black px-2 py-1 outline-none" required>
+		</div>
+
+		<div class="flex flex-col mt-2 w-full">
+            <label for="password">Password</label>
+            <input type="password" name="password" id="password" class="text-black px-2 py-1 outline-none" required>
+		</div>
+		<div class="flex mt-2 w-full justify-center items-center">
+            <input type="checkbox" name="remember_me" id="remember_me" class="mr-2 outline-none">
+            <label for="remember_me">Keep me logged in for 60 days</label>
+		</div>
+
+		<div class="bg-amber mt-4 rounded-sm px-2 py-1">
+            <button type="submit">Log in</button>
+        </div>
+	</form>
+
+	<p class="mb-4 text-amber">
+        <a href="/users/register">Register</a> | <a href="/users/forgot-password">Forgot your password?</a>
+	</p>
+</div>
+
+{% endblock %}
