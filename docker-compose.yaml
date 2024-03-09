@@ -3,7 +3,7 @@ version: '3.7'
 services:
   postgres:
     image: postgres:latest
-    container_name: katbin_pg
+    container_name: katbin_postgres
     restart: always
     ports:
       - "15432:5432"
@@ -13,6 +13,19 @@ services:
       POSTGRES_DB: katbin
     volumes:
       - pg_data:/var/lib/postgresql/data
+  
+  katbin:
+    # build locally
+    build: .
+    container_name: katbin
+    depends_on:
+      - postgres
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/katbin
+      PORT: 3000
 
 volumes:
   pg_data:

@@ -1,0 +1,6 @@
+target
+.envrc
+.idea
+node_modules
+api/static/css/index.css
+Dockerfile
