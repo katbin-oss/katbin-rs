@@ -1,14 +1,15 @@
 <!doctype html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport"
-          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     {% if page_title %}
-        <title>Katbin - {{ page_title }}</title>
+    <title>Katbin - {{ page_title }}</title>
     {% else %}
-        <title>Katbin</title>
+    <title>Katbin</title>
     {% endif %}
 
     <title itemprop="name">Katbin</title>
@@ -30,7 +31,8 @@
 
     <meta name="robots" content="index,follow">
     <meta name="googlebot" content="index,follow">
-    <meta name="keywords" content="paste,pastebin,url,urlshortener,url-shortener,code,programming,bin,cat,kat,paste,share,save,login">
+    <meta name="keywords"
+        content="paste,pastebin,url,urlshortener,url-shortener,code,programming,bin,cat,kat,paste,share,save,login">
     <meta name="coverage" content="Worldwide">
     <meta name="distribution" content="Global">
     <meta name="HandheldFriendly" content="True">
@@ -41,44 +43,48 @@
     <meta name="apple-touch-fullscreen" content="yes">
 
     {% if paste %}
-        <meta name="description" content={{ paste.content }}>
-        <meta itemprop="description" content={{ paste.content }}>
-        <meta property="og:description" content={{ paste.content }}>
-        <meta name="twitter:description" content={{ paste.content }}>
+    <meta name="description" content={{ paste.content }}>
+    <meta itemprop="description" content={{ paste.content }}>
+    <meta property="og:description" content={{ paste.content }}>
+    <meta name="twitter:description" content={{ paste.content }}>
 
-        <meta name="url" content="https://katb.in/{{ paste.id }}">
-        <meta name="twitter:url" content="https://katb.in/{{ paste.id }}">
-        <meta property="og:url" content="https://katb.in/{{ paste.id }}">
+    <meta name="url" content="https://katb.in/{{ paste.id }}">
+    <meta name="twitter:url" content="https://katb.in/{{ paste.id }}">
+    <meta property="og:url" content="https://katb.in/{{ paste.id }}">
     {% else %}
-        <meta name="description" content="Paste, save, share! A pastebin and URL shortener for all your needs.">
-        <meta property="og:description" content="Paste, save, share! A pastebin and URL shortener for all your needs.">
-        <meta itemprop="og:description" content="Paste, save, share! A pastebin and URL shortener for all your needs.">
-        <meta name="twitter:description" content="Paste, save, share! A pastebin and URL shortener for all your needs.">
+    <meta name="description" content="Paste, save, share! A pastebin and URL shortener for all your needs.">
+    <meta property="og:description" content="Paste, save, share! A pastebin and URL shortener for all your needs.">
+    <meta itemprop="og:description" content="Paste, save, share! A pastebin and URL shortener for all your needs.">
+    <meta name="twitter:description" content="Paste, save, share! A pastebin and URL shortener for all your needs.">
 
-        <meta name="url" content="https://katb.in">
-        <meta name="twitter:url" content="https://katb.in">
-        <meta property="og:url" content="https://katb.in">
+    <meta name="url" content="https://katb.in">
+    <meta name="twitter:url" content="https://katb.in">
+    <meta property="og:url" content="https://katb.in">
     {% endif %}
 
     <link rel="stylesheet" href="/static/css/index.css">
 </head>
+
 <body class="flex flex-col">
     <header class="flex w-full justify-between items-center py-3 px-6">
         <a href={ Routes.page_path(@conn, :index) }>
             <span class="font-semibold text-xl tracking-tight">
-              <span class="text-amber text-xl">&lt;Kat</span>bin/&gt;
+                <span class="text-amber text-xl">&lt;Kat</span>bin/&gt;
             </span>
         </a>
 
         <nav role="navigation">
             <ul>
-                <%= if function_exported?(Routes, :live_dashboard_path, 2) do %>
-                <li>
-                    <%# <%= link "LiveDashboard", to: Routes.live_dashboard_path(@conn, :home) %>
-                </li>
-                <% end %>
+                {% if current_user %}
+                <li>current_user.email</li>
+                <li><a href="/users/settings">Settings</a></li>
+                <li><a href="/users/log_out">Log out</a></li>
+                {% else %}
+                <li><a href="/users/register">Register</a></li>
+                <li><a href="/users/log_in">Log in</a></li>
+                {% endif %}
             </ul>
-            <%= render "_user_menu.html", assigns %>
+
         </nav>
 
     </header>
@@ -89,14 +95,18 @@
         {% endblock %}
     </main>
     <footer class="font-bold">
-        <div class="flex px-4 py-1 text-xs sm:text-base justify-between text-amber" style="background: #1a1a1a; font-family: JetbrainsMono">
+        <div class="flex px-4 py-1 text-xs sm:text-base justify-between text-amber"
+            style="background: #1a1a1a; font-family: JetbrainsMono">
             <a href="https://kat.bio">
-                © <%= DateTime.utc_now().year %> SphericalKat
+                © <span class="text-amber" id="year"></span> SphericalKat
             </a>
-            <a href="https://github.com/sphericalkat/katbin">
+            <a href="https://github.com/katbin-oss/katbin-rs">
                 Fork me!
             </a>
         </div>
     </footer>
 </body>
+<script>
+    document.getElementById('year').innerText = new Date().getFullYear();
+</script>
 </html>
