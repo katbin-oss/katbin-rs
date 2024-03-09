@@ -3,7 +3,7 @@
 <div class="flex flex-col w-full h-full justify-center items-center">
 	<h1 class="font-bold text-4xl text-amber pt-4">Log in</h1>
 
-	<form class="flex flex-col h-full justify-center items-start m-auto">
+	<form method="post" class="flex flex-col h-full justify-center items-start m-auto">
 		{% if error_message %}
 			<div class="alert alert-danger">
 				<p>{{ error_message }}</p>

@@ -4,16 +4,14 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get_service, post};
-use axum::{body, Form};
+use axum::Form;
 use axum::{routing::get, Router};
-use entity::{pastes, users};
+use entity::{pastes, schema};
 use serde::{Deserialize, Serialize};
 use service::sea_orm::{Database, DatabaseConnection, DbErr, SqlErr};
 use service::{Mutation, Query};
 use tera::Tera;
 use tower_http::services::ServeDir;
-
-mod schema;
 
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
@@ -41,6 +39,7 @@ async fn start() -> anyhow::Result<()> {
         .route("/", post(create_paste))
         .route("/:paste_id", get(show_paste))
         .route("/users/log_in", get(login))
+        .route("/users/log_in", post(login_post))
         .nest_service(
             "/static",
             get_service(ServeDir::new(concat!(
@@ -199,6 +198,44 @@ async fn login(state: State<AppState>) -> Result<Html<String>, (StatusCode, &'st
         })?;
 
     Ok(Html(body))
+}
+
+async fn login_post(state: State<AppState>, form: Form<schema::LoginPost>) -> Response {
+    let form = form.0;
+    let user_res = Query::login(&state.conn, &form).await;
+
+    if let Err(err) = user_res {
+        match err {
+            DbErr::RecordNotFound(msg) => {
+                let mut ctx = tera::Context::new();
+                ctx.insert(
+                    "flash",
+                    &Flash {
+                        info: None,
+                        warn: Some(msg),
+                    },
+                );
+
+                let body_res = state
+                    .templates
+                    .render("login.html.tera", &ctx)
+                    .map_err(|err| {
+                        tracing::error!("error rendering template {}", err);
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "error rendering template",
+                        )
+                    });
+                if body_res.is_err() {
+                    return body_res.unwrap_err().into_response();
+                }
+                return Html(body_res.unwrap()).into_response();
+            }
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, "something went wrong").into_response(),
+        }
+    } else {
+        Redirect::to("/").into_response()
+    }
 }
 
 pub fn main() {
