@@ -138,6 +138,7 @@ dependencies = [
  "anyhow",
  "axum",
  "dotenvy",
+ "entity",
  "serde",
  "serde_json",
  "service",

@@ -6,10 +6,10 @@ use crate::utils::{self, is_url};
 pub struct Mutation;
 
 impl Mutation {
-    pub async fn create_paste(db: &DbConn, form_data: pastes::Model) -> Result<pastes::ActiveModel, DbErr> {
+    pub async fn create_paste(db: &DbConn, form_data: &pastes::Model) -> Result<pastes::Model, DbErr> {
         // if the user defined a custom url, use it
-        let id = match form_data.custom_url {
-            Some(custom_url) => custom_url,
+        let id = match &form_data.custom_url {
+            Some(custom_url) => custom_url.clone(),
             None => utils::generate_key(10),
         };
 
@@ -20,6 +20,6 @@ impl Mutation {
             belongs_to: ActiveValue::NotSet, // TODO: add after auth is implemented
         };
 
-        paste.save(db).await
+        paste.insert(db).await
     }
 }

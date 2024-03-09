@@ -1,13 +1,17 @@
 use std::env;
 
-use axum::{routing::get, Router};
 use axum::extract::State;
 use axum::http::StatusCode;
-use axum::response::Html;
-use axum::routing::get_service;
+use axum::response::{Html, IntoResponse, Redirect, Response};
+use axum::routing::{get_service, post};
+use axum::Form;
+use axum::{routing::get, Router};
+use entity::pastes;
+use serde::{Deserialize, Serialize};
+use service::sea_orm::{Database, DatabaseConnection, SqlErr};
+use service::Mutation;
 use tera::Tera;
 use tower_http::services::ServeDir;
-use service::sea_orm::{Database, DatabaseConnection};
 
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
@@ -25,24 +29,27 @@ async fn start() -> anyhow::Result<()> {
         .await
         .expect("database connection failed");
 
-    let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).expect("tera initialization failed");
+    let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*"))
+        .expect("tera initialization failed");
 
     let state: AppState = AppState { templates, conn };
 
     let app = Router::new()
         .route("/", get(root))
+        .route("/", post(create_paste))
         .nest_service(
             "/static",
             get_service(ServeDir::new(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/static"
-        )))
-        .handle_error(|error| async move {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Unhandled internal error: {error}"),
-            )
-        }))
+                env!("CARGO_MANIFEST_DIR"),
+                "/static"
+            )))
+            .handle_error(|error| async move {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Unhandled internal error: {error}"),
+                )
+            }),
+        )
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", port))
@@ -61,19 +68,78 @@ struct AppState {
     conn: DatabaseConnection,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+struct Flash {
+    pub info: Option<String>,
+    pub warn: Option<String>,
+}
+
 // basic handler that responds with a static string
-async fn root(
-    state: State<AppState>
-) -> Result<Html<String>, (StatusCode, &'static str)> {
+async fn root(state: State<AppState>) -> Result<Html<String>, (StatusCode, &'static str)> {
     let ctx = tera::Context::new();
 
-    let body = state.templates.render("index.html.tera", &ctx)
+    let body = state
+        .templates
+        .render("index.html.tera", &ctx)
         .map_err(|e| {
             tracing::error!("Error rendering template {}", e);
-            return (StatusCode::INTERNAL_SERVER_ERROR, "error rendering template")
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "error rendering template",
+            );
         })?;
 
     Ok(Html(body))
+}
+
+async fn create_paste(
+    state: State<AppState>,
+    form: Form<pastes::Model>,
+) -> Response {
+    let form = form.0;
+
+    let create_result = Mutation::create_paste(&state.conn, &form).await;
+    if let Err(error) = create_result {
+        match error.sql_err() {
+            Some(sql_err) => match sql_err {
+                SqlErr::UniqueConstraintViolation(_) => {
+                    // this key already exists
+                    // re-render the index page with a flash
+                    let mut ctx = tera::Context::new();
+                    if form.custom_url.is_some() {
+                        ctx.insert(
+                            "flash",
+                            &Flash {
+                                info: None,
+                                warn: Some(String::from("This custom URL has already been taken.")),
+                            },
+                        );
+                    }
+
+                    let body = state
+                        .templates
+                        .render("index.html.tera", &ctx)
+                        .map_err(|e| {
+                            tracing::error!("Error rendering template {}", e);
+                            (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                "error rendering template",
+                            )
+                        });
+                    if let Err(e) = body {
+                        return e.into_response();
+                    }
+                    
+                    return Html(body.unwrap()).into_response();
+                }
+                SqlErr::ForeignKeyConstraintViolation(_) => todo!(),
+                _ => return (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong!").into_response(),
+            },
+            None => return (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong!").into_response(),
+        }
+    }
+
+    Redirect::to("").into_response()
 }
 
 pub fn main() {
