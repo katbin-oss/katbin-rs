@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use service::sea_orm::{Database, DatabaseConnection, DbErr, SqlErr};
 use service::{Mutation, Query};
 use tera::Tera;
-use tower_cookies::{Cookie, CookieManagerLayer, Cookies, Key, SignedCookies};
+use tower_cookies::{Cookie, CookieManagerLayer, Cookies, Key};
 use tower_http::services::ServeDir;
 
 const COOKIE_NAME: &str = "current_user";
@@ -96,9 +96,10 @@ async fn root(
     current_user: Option<Extension<users::Model>>,
     state: State<AppState>,
 ) -> Result<Html<String>, (StatusCode, &'static str)> {
-    let ctx = tera::Context::new();
-
-    println!("{:?}", current_user);
+    let mut ctx = tera::Context::new();
+    if let Some(user) = current_user {
+        ctx.insert("current_user", &user.0);
+    }
 
     let body = state
         .templates
