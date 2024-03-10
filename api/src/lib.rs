@@ -1,17 +1,24 @@
 use std::env;
+use std::sync::OnceLock;
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get_service, post};
-use axum::Form;
 use axum::{routing::get, Router};
-use entity::{pastes, schema};
+use axum::{Extension, Form};
+use entity::{pastes, schema, users};
 use serde::{Deserialize, Serialize};
 use service::sea_orm::{Database, DatabaseConnection, DbErr, SqlErr};
 use service::{Mutation, Query};
 use tera::Tera;
+use tower_cookies::{Cookie, CookieManagerLayer, Cookies, Key, SignedCookies};
 use tower_http::services::ServeDir;
+
+const COOKIE_NAME: &str = "current_user";
+static KEY: OnceLock<Key> = OnceLock::new();
+
+mod middleware;
 
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
@@ -19,10 +26,12 @@ async fn start() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     // load env variables
-
     dotenvy::dotenv().ok();
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL not found in environment");
     let port = env::var("PORT").expect("PORT not found in environment");
+    let key = env::var("SECRET_KEY").expect("SECRET_KEY not found in environment");
+
+    KEY.set(Key::from(key.as_bytes())).unwrap();
 
     // make db connection
     let conn = Database::connect(db_url)
@@ -53,6 +62,11 @@ async fn start() -> anyhow::Result<()> {
                 )
             }),
         )
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::current_user_middleware,
+        ))
+        .layer(CookieManagerLayer::new())
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
@@ -78,8 +92,13 @@ struct Flash {
 }
 
 // basic handler that responds with a static string
-async fn root(state: State<AppState>) -> Result<Html<String>, (StatusCode, &'static str)> {
+async fn root(
+    current_user: Option<Extension<users::Model>>,
+    state: State<AppState>,
+) -> Result<Html<String>, (StatusCode, &'static str)> {
     let ctx = tera::Context::new();
+
+    println!("{:?}", current_user);
 
     let body = state
         .templates
@@ -200,8 +219,13 @@ async fn login(state: State<AppState>) -> Result<Html<String>, (StatusCode, &'st
     Ok(Html(body))
 }
 
-async fn login_post(state: State<AppState>, form: Form<schema::LoginPost>) -> Response {
+async fn login_post(
+    cookies: Cookies,
+    state: State<AppState>,
+    form: Form<schema::LoginPost>,
+) -> Response {
     let form = form.0;
+    let signed_cookies = cookies.signed(KEY.get().unwrap());
     let user_res = Query::login(&state.conn, &form).await;
 
     if let Err(err) = user_res {
@@ -234,6 +258,9 @@ async fn login_post(state: State<AppState>, form: Form<schema::LoginPost>) -> Re
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "something went wrong").into_response(),
         }
     } else {
+        let mut cookie = Cookie::new(COOKIE_NAME, user_res.unwrap().email);
+        cookie.set_path("/");
+        signed_cookies.add(cookie);
         Redirect::to("/").into_response()
     }
 }

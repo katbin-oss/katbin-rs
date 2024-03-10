@@ -12,15 +12,9 @@ impl Query {
     }
 
     pub async fn login(db: &DbConn, form: &schema::LoginPost) -> Result<users::Model, DbErr> {
-        let user = users::Entity::find()
-            .filter(users::Column::Email.eq(&form.email))
-            .one(db)
-            .await?;
-        if user.is_none() {
-            return Err(DbErr::RecordNotFound(String::from("User not found")).into());
-        }
+        let user = Query::get_user_by_email(db, &form.email).await?;
 
-        let verified = bcrypt::verify(&form.password, &user.as_ref().unwrap().hashed_password)
+        let verified = bcrypt::verify(&form.password, &user.hashed_password)
             .map_err(|_| DbErr::RecordNotFound(String::from("Passwords do not match")))?;
         if !verified {
             return Err(DbErr::RecordNotFound(String::from(
@@ -28,6 +22,18 @@ impl Query {
             )));
         }
 
-        Ok(user.unwrap())
+        Ok(user)
+    }
+
+    pub async fn get_user_by_email(db: &DbConn, email: &str) -> Result<users::Model, DbErr> {
+        let user = users::Entity::find()
+            .filter(users::Column::Email.eq(email))
+            .one(db)
+            .await?;
+
+        match user {
+            Some(u) => Ok(u),
+            None => Err(DbErr::RecordNotFound(String::from("User not found")).into()),
+        }
     }
 }
