@@ -49,6 +49,8 @@ async fn start() -> anyhow::Result<()> {
         .route("/", get(root))
         .route("/", post(create_paste))
         .route("/:paste_id", get(show_paste))
+        .route("/:paste_id/edit", get(edit))
+        .route("/:paste_id/edit", post(post_edit))
         .route("/v/:paste_id", get(show_paste))
         .route("/users/log_in", get(login))
         .route("/users/log_in", post(login_post))
@@ -118,6 +120,91 @@ async fn root(
     Ok(Html(body))
 }
 
+async fn edit(
+    current_user: Option<Extension<users::Model>>,
+    state: State<AppState>,
+    Path(paste_id): Path<String>,
+) -> Response {
+    // check if a paste exists for the given paste id
+    let split_paste: Vec<_> = paste_id.split(".").collect();
+    let mut extension = "";
+    if split_paste.len() == 2 {
+        extension = split_paste[1];
+    }
+    let paste = Query::get_paste_by_id(&state.conn, split_paste[0])
+        .await
+        .map_err(|err| match err {
+            DbErr::RecordNotFound(_) => (StatusCode::NOT_FOUND, "Not found"),
+            _ => (StatusCode::NOT_FOUND, "Not found"),
+        });
+    if paste.is_err() {
+        return paste.unwrap_err().into_response();
+    }
+    let paste = paste.unwrap();
+
+    // check if a user is logged in
+    if current_user.is_none() {
+        return Redirect::to(format!("/{}", paste_id).as_str()).into_response();
+    }
+    let current_user = current_user.unwrap();
+
+    if paste.belongs_to != Some(current_user.id) {
+        return Redirect::to(format!("/{}", paste_id).as_str()).into_response();
+    }
+
+    let mut ctx = tera::Context::new();
+    ctx.insert("current_user", &current_user.0);
+    ctx.insert("is_edit", &true);
+    ctx.insert("content", &paste.content);
+
+    let body = state
+        .templates
+        .render("index.html.tera", &ctx)
+        .map_err(|e| {
+            tracing::error!("Error rendering template {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "error rendering template",
+            )
+        });
+    if let Err(e) = body {
+        return e.into_response();
+    }
+
+    Html(body.unwrap()).into_response()
+}
+
+async fn post_edit(
+    current_user: Option<Extension<users::Model>>,
+    state: State<AppState>,
+    Path(paste_id): Path<String>,
+    form: Form<pastes::Model>,
+) -> Result<Redirect, (StatusCode, &'static str)> {
+    let form = form.0;
+    let user = current_user.map(|u| u.0);
+
+    // if paste_id contains a ".", split on it
+    let split_paste: Vec<_> = paste_id.split(".").collect();
+    let mut extension = "";
+    if split_paste.len() == 2 {
+        extension = split_paste[1];
+    }
+
+    let paste = Mutation::update_paste_content(&state.conn, &form, user, split_paste[0])
+        .await
+        .map_err(|err| match err {
+            DbErr::RecordNotFound(_) => (StatusCode::NOT_FOUND, "Not found"),
+            _ => (StatusCode::NOT_FOUND, "Not found"),
+        })?;
+
+    let redirect_url = if paste.is_url {
+        format!("/v/{}", paste.id)
+    } else {
+        format!("/{}", paste.id)
+    };
+    Ok(Redirect::to(&redirect_url))
+}
+
 async fn create_paste(
     current_user: Option<Extension<users::Model>>,
     state: State<AppState>,
@@ -172,7 +259,12 @@ async fn create_paste(
         }
     }
 
-    let redirect_url = format!("/{}", create_result.unwrap().id);
+    let paste = create_result.unwrap();
+    let redirect_url = if paste.is_url {
+        format!("/v/{}", paste.id)
+    } else {
+        format!("/{}", paste.id)
+    };
     Redirect::to(&redirect_url).into_response()
 }
 
@@ -208,7 +300,7 @@ async fn show_paste(
 
     let show_edit = match (paste.belongs_to, current_user.as_ref()) {
         (Some(belongs_to), Some(current_user)) => current_user.id == belongs_to,
-        _ => false
+        _ => false,
     };
 
     let mut ctx = tera::Context::new();

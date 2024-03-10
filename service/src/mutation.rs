@@ -1,5 +1,5 @@
 use entity::{pastes, users};
-use sea_orm::{ActiveModelTrait, ActiveValue, DbConn, DbErr};
+use sea_orm::{sea_query::Query, ActiveModelTrait, ActiveValue, DbConn, DbErr};
 
 use crate::utils::{self, is_url};
 
@@ -41,5 +41,22 @@ impl Mutation {
         };
 
         paste.insert(db).await
+    }
+
+    #[tracing::instrument]
+    pub async fn update_paste_content(
+        db: &DbConn,
+        form_data: &pastes::Model,
+        current_user: Option<users::Model>,
+        paste_id: &str,
+    ) -> Result<pastes::Model, DbErr> {
+        let is_url = is_url(&form_data.content);
+
+        let mut paste: pastes::ActiveModel =
+            crate::Query::get_paste_by_id(db, paste_id).await?.into();
+        paste.content = ActiveValue::Set(form_data.content.clone());
+        paste.is_url = ActiveValue::Set(is_url);
+
+        paste.update(db).await
     }
 }
