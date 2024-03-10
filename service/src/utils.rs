@@ -33,12 +33,14 @@ pub(crate) fn generate_key(length: usize) -> String {
     key
 }
 
+#[tracing::instrument]
 pub(crate) fn is_url(url: &str) -> bool {
     match Url::parse(url) {
         Ok(parsed_url) => {
             // Check if the scheme is "http", "https", or "mailto" and if the host contains "."
             let scheme = parsed_url.scheme();
             let host = parsed_url.host_str().unwrap_or("");
+            tracing::debug!("URL could be parsed, scheme: {}, host: {}", scheme, host);
             ["http", "https", "mailto"].contains(&scheme)
                 && host.contains('.')
                 && !host.contains("katb.in")

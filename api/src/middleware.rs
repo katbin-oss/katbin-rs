@@ -24,7 +24,7 @@ pub async fn current_user_middleware(
         .get(COOKIE_NAME)
         .map(|c| c.value().to_owned())
         .unwrap_or_default();
-    println!("{}", current_user);
+
     if !current_user.is_empty() {
         let user = Query::get_user_by_email(&state.conn, &current_user).await;
         if let Ok(user) = user {

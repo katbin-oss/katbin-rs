@@ -2847,6 +2847,8 @@ dependencies = [
  "rand",
  "sea-orm 0.12.14",
  "thiserror",
+ "tracing",
+ "tracing-subscriber",
  "url",
 ]
 

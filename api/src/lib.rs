@@ -9,7 +9,7 @@ use axum::{routing::get, Router};
 use axum::{Extension, Form};
 use entity::{pastes, schema, users};
 use serde::{Deserialize, Serialize};
-use service::sea_orm::{Database, DatabaseConnection, DbErr, SqlErr};
+use service::sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr, SqlErr};
 use service::{Mutation, Query};
 use tera::Tera;
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies, Key};
@@ -34,7 +34,9 @@ async fn start() -> anyhow::Result<()> {
     KEY.set(Key::from(key.as_bytes())).unwrap();
 
     // make db connection
-    let conn = Database::connect(db_url)
+    let mut opt = ConnectOptions::new(db_url);
+    opt.sqlx_logging(env::var("DB_LOG").is_ok());
+    let conn = Database::connect(opt)
         .await
         .expect("database connection failed");
 
@@ -115,10 +117,15 @@ async fn root(
     Ok(Html(body))
 }
 
-async fn create_paste(state: State<AppState>, form: Form<pastes::Model>) -> Response {
+async fn create_paste(
+    current_user: Option<Extension<users::Model>>,
+    state: State<AppState>,
+    form: Form<pastes::Model>,
+) -> Response {
     let form = form.0;
+    let user = current_user.map(|u| u.0);
 
-    let create_result = Mutation::create_paste(&state.conn, &form).await;
+    let create_result = Mutation::create_paste(&state.conn, &form, user).await;
     if let Err(error) = create_result {
         match error.sql_err() {
             Some(sql_err) => match sql_err {
