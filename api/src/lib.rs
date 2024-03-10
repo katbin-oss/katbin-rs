@@ -177,6 +177,7 @@ async fn create_paste(
 }
 
 async fn show_paste(
+    current_user: Option<Extension<users::Model>>,
     state: State<AppState>,
     Path(paste_id): Path<String>,
     request: Request,
@@ -205,9 +206,18 @@ async fn show_paste(
         return Redirect::temporary(&paste.content).into_response();
     }
 
+    let show_edit = match (paste.belongs_to, current_user.as_ref()) {
+        (Some(belongs_to), Some(current_user)) => current_user.id == belongs_to,
+        _ => false
+    };
+
     let mut ctx = tera::Context::new();
     ctx.insert("paste", &paste);
     ctx.insert("extension", extension);
+    ctx.insert("show_edit", &show_edit);
+    if let Some(user) = current_user {
+        ctx.insert("current_user", &user.0);
+    }
 
     let body = state.templates.render("show.html.tera", &ctx).map_err(|e| {
         tracing::error!("Error rendering template {}", e);
