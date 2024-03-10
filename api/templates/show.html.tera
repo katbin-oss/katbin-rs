@@ -13,7 +13,12 @@
 	{% if extension == "md" %}
 		<div class="break-word px-6 py-4 h-full w-full markdown overflow-y-auto">{{ paste.content }}</div>
 	{% else %}
-		<code class="break-word px-6 py-4 h-full w-full overflow-y-auto">{{ paste.content }}</code>
+		<code class="break-word px-6 py-4 h-full w-full overflow-y-auto">{% if paste.is_url %}
+Your shortened url is: <a href="https://katb.in/{{ paste.id }}">https://katb.in/{{ paste.id }}</a>
+        {% else %}
+        {{ paste.content }}
+        {% endif %}
+        </code>
 	{% endif %}
 </div>
 

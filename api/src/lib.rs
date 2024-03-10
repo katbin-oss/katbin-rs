@@ -1,7 +1,7 @@
 use std::env;
 use std::sync::OnceLock;
 
-use axum::extract::{Path, State};
+use axum::extract::{Path, Request, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get_service, post};
@@ -49,6 +49,7 @@ async fn start() -> anyhow::Result<()> {
         .route("/", get(root))
         .route("/", post(create_paste))
         .route("/:paste_id", get(show_paste))
+        .route("/v/:paste_id", get(show_paste))
         .route("/users/log_in", get(login))
         .route("/users/log_in", post(login_post))
         .nest_service(
@@ -178,7 +179,8 @@ async fn create_paste(
 async fn show_paste(
     state: State<AppState>,
     Path(paste_id): Path<String>,
-) -> Result<Html<String>, (StatusCode, &'static str)> {
+    request: Request,
+) -> Response {
     // if paste_id contains a ".", split on it
     let split_paste: Vec<_> = paste_id.split(".").collect();
     let mut extension = "";
@@ -191,24 +193,34 @@ async fn show_paste(
         .map_err(|err| match err {
             DbErr::RecordNotFound(_) => (StatusCode::NOT_FOUND, "Not found"),
             _ => (StatusCode::NOT_FOUND, "Not found"),
-        })?;
+        });
+    if paste.is_err() {
+        return paste.unwrap_err().into_response();
+    }
+
+    let paste = paste.unwrap();
+
+    if !request.uri().to_string().contains("/v/") && paste.is_url {
+        tracing::debug!("Path is not for display, redirect to URL");
+        return Redirect::temporary(&paste.content).into_response();
+    }
 
     let mut ctx = tera::Context::new();
     ctx.insert("paste", &paste);
     ctx.insert("extension", extension);
 
-    let body = state
-        .templates
-        .render("show.html.tera", &ctx)
-        .map_err(|e| {
-            tracing::error!("Error rendering template {}", e);
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "error rendering template",
-            );
-        })?;
+    let body = state.templates.render("show.html.tera", &ctx).map_err(|e| {
+        tracing::error!("Error rendering template {}", e);
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "error rendering template",
+        );
+    });
+    if body.is_err() {
+        return body.unwrap_err().into_response();
+    }
 
-    Ok(Html(body))
+    Html(body.unwrap()).into_response()
 }
 
 async fn login(state: State<AppState>) -> Result<Html<String>, (StatusCode, &'static str)> {
