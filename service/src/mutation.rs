@@ -1,7 +1,10 @@
 use entity::{pastes, users};
-use sea_orm::{sea_query::Query, ActiveModelTrait, ActiveValue, DbConn, DbErr};
+use sea_orm::{ActiveModelTrait, ActiveValue, DbConn, DbErr};
 
-use crate::utils::{self, is_url};
+use crate::{
+    utils::{self, is_url},
+    Query,
+};
 
 pub struct Mutation;
 
@@ -52,8 +55,7 @@ impl Mutation {
     ) -> Result<pastes::Model, DbErr> {
         let is_url = is_url(&form_data.content);
 
-        let mut paste: pastes::ActiveModel =
-            crate::Query::get_paste_by_id(db, paste_id).await?.into();
+        let mut paste: pastes::ActiveModel = Query::get_paste_by_id(db, paste_id).await?.into();
         paste.content = ActiveValue::Set(form_data.content.clone());
         paste.is_url = ActiveValue::Set(is_url);
 

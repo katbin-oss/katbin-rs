@@ -18,8 +18,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm run build-css-prod
 
 # final image
-FROM debian:buster-slim AS final
-RUN apt-get update && apt-get install -y ca-certificates
+FROM debian:12-slim AS final
 WORKDIR /usr/src/katbin
 COPY --from=rust /usr/src/katbin/katbin ./
 COPY --from=rust /usr/src/katbin/api/templates ./api/templates
