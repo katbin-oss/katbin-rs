@@ -35,7 +35,7 @@ async fn start() -> anyhow::Result<()> {
 
     // make db connection
     let mut opt = ConnectOptions::new(db_url);
-    opt.sqlx_logging(env::var("DB_LOG").is_ok());
+    // opt.sqlx_logging(env::var("DB_LOG").is_ok());
     let conn = Database::connect(opt)
         .await
         .expect("database connection failed");
@@ -54,6 +54,8 @@ async fn start() -> anyhow::Result<()> {
         .route("/v/:paste_id", get(show_paste))
         .route("/users/log_in", get(login))
         .route("/users/log_in", post(login_post))
+        .route("/users/register", get(register))
+        .route("/users/register", post(register_post))
         .nest_service(
             "/static",
             get_service(ServeDir::new(concat!(
@@ -384,6 +386,96 @@ async fn login_post(
         cookie.set_path("/");
         signed_cookies.add(cookie);
         Redirect::to("/").into_response()
+    }
+}
+
+async fn register(state: State<AppState>) -> Result<Html<String>, (StatusCode, &'static str)> {
+    let ctx = tera::Context::new();
+    let body = state
+        .templates
+        .render("register.html.tera", &ctx)
+        .map_err(|err| {
+            tracing::error!("error rendering template {}", err);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "error rendering template",
+            )
+        })?;
+
+    Ok(Html(body))
+}
+
+async fn register_post(
+    current_user: Option<Extension<users::Model>>,
+    state: State<AppState>,
+    form: Form<schema::LoginPost>,
+) -> Response {
+    let form = form.0;
+    let user_res = Mutation::register(&state.conn, &form).await;
+
+    if let Some(_) = current_user {
+        return Redirect::to("/").into_response();
+    }
+
+    if let Err(err) = user_res {
+        match err {
+            DbErr::RecordNotFound(msg) => {
+                let mut ctx = tera::Context::new();
+                ctx.insert(
+                    "flash",
+                    &Flash {
+                        info: None,
+                        warn: Some(msg),
+                    },
+                );
+
+                let body_res = state
+                    .templates
+                    .render("register.html.tera", &ctx)
+                    .map_err(|err| {
+                        tracing::error!("error rendering template {}", err);
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "error rendering template",
+                        )
+                    });
+                if body_res.is_err() {
+                    return body_res.unwrap_err().into_response();
+                }
+                return Html(body_res.unwrap()).into_response();
+            }
+            DbErr::Custom(custom) => {
+                let mut ctx = tera::Context::new();
+                ctx.insert(
+                    "flash",
+                    &Flash {
+                        info: None,
+                        warn: Some(custom),
+                    },
+                );
+
+                let body_res = state
+                    .templates
+                    .render("register.html.tera", &ctx)
+                    .map_err(|err| {
+                        tracing::error!("error rendering template {}", err);
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "error rendering template",
+                        )
+                    });
+                if body_res.is_err() {
+                    return body_res.unwrap_err().into_response();
+                }
+                return Html(body_res.unwrap()).into_response();
+            }
+            e => {
+                tracing::error!("Something went wrong: {}", e);
+                return (StatusCode::INTERNAL_SERVER_ERROR, "something went wrong").into_response();
+            }
+        }
+    } else {
+        Redirect::to("/users/log_in").into_response()
     }
 }
 

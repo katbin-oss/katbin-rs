@@ -1,0 +1,8 @@
+procs:
+  tailwind:
+    cmd: ["npm", "run", "watch-css"]
+    cwd: "tailwind"
+  server:
+    cmd: ["cargo", "run"]
+  shell:
+    cmd: ["zsh"]

@@ -10,8 +10,9 @@ anyhow = "1.0.80"
 bcrypt = "0.15.0"
 entity = { path = "../entity" }
 rand = "0.8.5"
-sea-orm = { version = "0.12", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros" ] }
+sea-orm = { version = "0.12", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "chrono" ] }
 thiserror = "1.0.57"
 url = "2.5.0"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt"]}
+chrono = "0.4.35"

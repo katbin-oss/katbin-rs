@@ -15,7 +15,7 @@ impl MigrationTrait for Migration {
                 id              bigserial
                     primary key,
                 email           citext       not null,
-                hashed_password varchar(255) not null,
+                hashed_password varchar(255) not null unique,
                 confirmed_at    timestamp(0),
                 inserted_at     timestamp(0) not null,
                 updated_at      timestamp(0) not null
